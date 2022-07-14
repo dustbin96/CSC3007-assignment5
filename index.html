@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.css" />
+    <style>
+        #map {
+            width: 1000px;
+            height: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 style="text-align: center"> Live PSI 24-Hr Readings </h1>
+
+    <div id="map" style="margin: auto;"></div>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.8.0/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+
+    <script>
+        const url = "https://api.data.gov.sg/v1/environment/psi";
+
+        $(document).ready(function () {
+            let tiles = new L.tileLayer('https://maps-{s}.onemap.sg/v3/Default/{z}/{x}/{y}.png', {
+                detectRetina: true,
+                maxZoom: 18,
+                minZoom: 11,
+                //Do not remove this attribution
+                attribution: '<img src="https://docs.onemap.sg/maps/images/oneMap64-01.png" style="height:20px;width:20px;">' +
+                    'New OneMap | Map data © contributors, <a href="http://SLA.gov.sg">Singapore Land Authority</a>'
+            });
+
+            let map = new L.Map("map", {
+                center: [1.347833, 103.809357],
+                zoom: 11,
+                maxBounds: L.latLngBounds(L.latLng(1.1, 103.5), L.latLng(1.5, 104.3))
+            }).addLayer(tiles);
+
+            var layerGroup = L.layerGroup().addTo(map);
+
+            async function getAPI(url) {
+                const response = await fetch(url);
+                let respData = await response.json();
+                // console.log(respData);
+                return populateData(respData);
+
+            }
+
+            function populateData(jsonData) {
+                let dataArr = [];
+                let readings = jsonData.items[0].readings;
+                let psiEntries = Object.entries(readings.psi_twenty_four_hourly);
+                let psiColor = "";
+
+                // console.log(psiEntries)
+
+                for (const [key, value] of Object.entries(jsonData.region_metadata)) {
+                    if (key == 1) {
+                        continue;
+                    };
+                    let psiVal = psiEntries[key][1];
+
+                    if (psiVal >= 0 && psiVal <= 50) {
+                        psiColor = "green";   // Good
+                    } else if (psiVal >= 51 && psiVal <= 100) {
+                        psiColor = "blue";   // Moderate
+                    } else if (psiVal >= 101 && psiVal <= 200) {
+                        psiColor = "yellow";   // Unhealthy
+                    } else if (psiVal >= 201 && psiVal <= 300) {
+                        psiColor = "orange";   // Very Unhealthy
+                    } else {
+                        psiColor = "red";   // Hazardous
+                    }
+
+                    let dataObj = {
+                        name: value.name,
+                        coordinates: value.label_location,
+                        psi: psiEntries[key][1],
+                        psi_grade: psiColor
+                    };
+                    dataArr.push(dataObj);
+                };
+
+                // console.log(dataArr)
+
+                return dataArr;
+            }
+
+                getAPI(url).then(res => {
+                    console.log(res)
+                    layerGroup.clearLayers();
+
+                    var circleWest = L.circle([res[0].coordinates.latitude, res[0].coordinates.longitude], {
+                        color: res[0].psi_grade,
+                        fillColor: res[0].psi_grade,
+                        fillOpacity: 0.5,
+                        radius: 2500
+                    }).bindTooltip("" + res[0].psi, { permanent: true, offset: [0, 0], direction: 'center' }
+                    ).addTo(layerGroup);
+
+
+                    var circleEast = L.circle([res[1].coordinates.latitude, res[1].coordinates.longitude], {
+                        color: res[1].psi_grade,
+                        fillColor: res[1].psi_grade,
+                        fillOpacity: 0.5,
+                        radius: 2500
+                    }).bindTooltip("" + res[1].psi, { permanent: true, offset: [0, 0], direction: 'center' }
+                    ).addTo(layerGroup);
+
+                    var circleCentral = L.circle([res[2].coordinates.latitude, res[2].coordinates.longitude], {
+                        color: res[2].psi_grade,
+                        fillColor: res[2].psi_grade,
+                        fillOpacity: 0.5,
+                        radius: 2500
+                    }).bindTooltip("" + res[2].psi, { permanent: true, offset: [0, 0], direction: 'center' }
+                    ).addTo(layerGroup);
+
+                    var circleSouth = L.circle([res[3].coordinates.latitude, res[3].coordinates.longitude], {
+                        color: res[3].psi_grade,
+                        fillColor: res[3].psi_grade,
+                        fillOpacity: 0.5,
+                        radius: 2500
+                    }).bindTooltip("" + res[3].psi, { permanent: true, offset: [0, 0], direction: 'center' }
+                    ).addTo(layerGroup);
+
+                    var circleNorth = L.circle([res[4].coordinates.latitude, res[4].coordinates.longitude], {
+                        color: res[4].psi_grade,
+                        fillColor: res[4].psi_grade,
+                        fillOpacity: 0.5,
+                        radius: 2500
+                    }).bindTooltip("" + res[4].psi, { permanent: true, offset: [0, 0], direction: 'center' }
+                    ).addTo(layerGroup);
+                })
+        })
+
+    </script>
+
+</body>
+
+</html>
